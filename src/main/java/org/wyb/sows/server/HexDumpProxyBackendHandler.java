@@ -15,6 +15,9 @@
  */
 package org.wyb.sows.server;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
@@ -27,6 +30,8 @@ import io.netty.handler.codec.http.websocketx.CloseWebSocketFrame;
 import io.netty.handler.codec.http.websocketx.WebSocketServerHandshaker;
 
 public class HexDumpProxyBackendHandler extends ChannelInboundHandlerAdapter {
+	
+	final Logger logger = LoggerFactory.getLogger(HexDumpProxyBackendHandler.class);
 
     private final Channel inboundChannel;
 
@@ -45,7 +50,6 @@ public class HexDumpProxyBackendHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(final ChannelHandlerContext ctx, Object msg) {
-    	//System.out.println("Binary send");
         inboundChannel.writeAndFlush(new BinaryWebSocketFrame(((ByteBuf) msg))).addListener(new ChannelFutureListener() {
             @Override
             public void operationComplete(ChannelFuture future) {
@@ -60,24 +64,21 @@ public class HexDumpProxyBackendHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
-    	System.out.println("Hex Dump channel inactive");
+    	if(logger.isDebugEnabled()){
+    		logger.debug("Hex Dump channel inactive");
+    	}
     	closeOnFlush();
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-    	// if exception occurred, close on flush hex channel first.
-    	// then it will trigger channelInactive to close websocket gracefully.
-    	System.err.println("Hex Dump connection error!");
-        cause.printStackTrace();
+    	logger.warn("Hex Dump connection error!",cause);
         HexDumpProxyBackendHandler.closeOnFlush(ctx.channel());
     }
     
     public void closeOnFlush() {
         if (inboundChannel.isActive()) {
-        	System.out.println("Send close web socket frame.");
         	handshaker.close(inboundChannel,new CloseWebSocketFrame());
-            //ch.writeAndFlush(Unpooled.EMPTY_BUFFER).addListener(ChannelFutureListener.CLOSE);
         }
     }
     

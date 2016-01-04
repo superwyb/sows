@@ -43,14 +43,18 @@ import io.netty.util.concurrent.Promise;
 
 @ChannelHandler.Sharable
 public final class SocksServerConnectHandler extends SimpleChannelInboundHandler<SocksCmdRequest> {
+	
+	private final String userName;
+	private final String passcode;
 
     private final Bootstrap b = new Bootstrap();
     private final URI bridgeServiceUri;
     
     
-    public SocksServerConnectHandler(URI bridgeServiceUri){
+    public SocksServerConnectHandler(URI bridgeServiceUri,String userName,String passcode){
     	this.bridgeServiceUri = bridgeServiceUri;
-
+    	this.userName = userName;
+    	this.passcode = passcode;
     }
 
     @Override
@@ -86,7 +90,7 @@ public final class SocksServerConnectHandler extends SimpleChannelInboundHandler
         final WebSocketClientHandler handler =
                 new WebSocketClientHandler(
                         WebSocketClientHandshakerFactory.newHandshaker(
-                        		bridgeServiceUri, WebSocketVersion.V13, null, false, new DefaultHttpHeaders()),promise,request.host(),request.port(),inboundChannel);
+                        		bridgeServiceUri, WebSocketVersion.V13, null, false, new DefaultHttpHeaders()),promise,request.host(),request.port(),inboundChannel,this.userName,this.passcode);
         b.group(inboundChannel.eventLoop())
          .channel(NioSocketChannel.class)
          .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)

@@ -24,6 +24,17 @@ import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
+import java.io.UnsupportedEncodingException;
+
+import javax.security.auth.login.LoginContext;
+import javax.security.auth.login.LoginException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.wyb.sows.server.security.PassiveCallbackHandler;
+import org.wyb.sows.websocket.SowsConnectCmd;
+import org.wyb.sows.websocket.SowsStatusType;
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
@@ -51,6 +62,8 @@ import io.netty.util.CharsetUtil;
  * Handles handshakes and messages
  */
 public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> {
+	
+	final Logger logger = LoggerFactory.getLogger(WebSocketServerHandler.class);
 
 	private static final String WEBSOCKET_PATH = "/websocket";
 
@@ -131,34 +144,45 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> 
 					String.format("%s frame types not supported", frame.getClass().getName()));
 		}
 		if(frame instanceof BinaryWebSocketFrame){
-			//System.out.println("Binary got");
+			if(remoteConnect){
 			BinaryWebSocketFrame binFrame = (BinaryWebSocketFrame) frame;
 			if (outboundChannel.isActive()) {
 				outboundChannel.writeAndFlush(binFrame.content().retain()).addListener(new ChannelFutureListener() {
 					@Override
 					public void operationComplete(ChannelFuture future) {
 						if (future.isSuccess()) {
-							// was able to flush out data, start to read the
-							// next chunk
-							//System.out.println("Binary sent");
 							ctx.channel().read();
 						} else {
-							//System.out.println("Binary not sent");
 							future.channel().close();
 						}
 					}
 				});
 			}
+			}else{
+				ctx.close();
+			}
 		}else if(frame instanceof TextWebSocketFrame){
 			String request = ((TextWebSocketFrame) frame).text();
 			if (!remoteConnect) {
-				System.out.println("Connect remote: " + request);
-				String[] params = request.split("\\:");
-				String host = params[0];
-				int port = Integer.parseInt(params[1]);
-
+				SowsConnectCmd cmd = new SowsConnectCmd();
+				try {
+					cmd.decode(request);
+				} catch (UnsupportedEncodingException e) {
+					e.printStackTrace();
+					ctx.close();
+				}
+				String host = cmd.getHost();
+				int port = cmd.getPort();
 				final Channel inboundChannel = ctx.channel();
-
+				LoginContext loginCtx = null;
+		        try {
+		        	loginCtx = new LoginContext("SimpleLogin", new PassiveCallbackHandler(cmd.getUserName(),cmd.getPasscode()));
+		        	loginCtx.login();
+		        } catch (LoginException e) {
+		        	logger.warn("Login failed. User="+cmd.getUserName());
+					WebSocketFrame frame1 = new TextWebSocketFrame(SowsStatusType.FAILED.stringValue());
+					inboundChannel.writeAndFlush(frame1).addListener(ChannelFutureListener.CLOSE);
+		        }
 				// Start the connection attempt.
 				Bootstrap b = new Bootstrap();
 				b.group(inboundChannel.eventLoop()).channel(ctx.channel().getClass())
@@ -169,24 +193,22 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> 
 					@Override
 					public void operationComplete(ChannelFuture future) {
 						if (future.isSuccess()) {
-							System.out.println("Target connection is established. host="+host+";port="+port);
-							WebSocketFrame frame = new TextWebSocketFrame("success");
+							logger.info("Target connection is established. Target="+host+":"+port);
+							WebSocketFrame frame = new TextWebSocketFrame(SowsStatusType.SUCCESS.stringValue());
 							inboundChannel.writeAndFlush(frame);
 							// connection complete start to read first data
 							inboundChannel.read();
 						} else {
-							System.err.println("Not able to connect target! host="+host+";port="+port);
-							WebSocketFrame frame = new TextWebSocketFrame(future.cause().toString());
+							logger.warn("Not able to connect target. Target="+host+":"+port);
+							WebSocketFrame frame = new TextWebSocketFrame(SowsStatusType.FAILED.stringValue());
 							inboundChannel.writeAndFlush(frame).addListener(ChannelFutureListener.CLOSE);
-							// Close the connection if the connection attempt has
-							// failed.
-							//inboundChannel.close();
 						}
 					}
 				});
 				remoteConnect = true;
 			} else {
-				System.err.println("Unknow text request:"+request);
+				logger.warn("Unknown SowsCmd! "+ request);
+				ctx.close();
 			}
 		}
 		
@@ -228,7 +250,9 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> 
 
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) {
-		System.out.println("Websocket server inbound inactive");
+		if(logger.isDebugEnabled()){
+			logger.debug("Websocket inbound inactive.");
+		}
 		if (outboundChannel != null) {
 			closeOnFlush(outboundChannel);
 		}

@@ -34,10 +34,15 @@ import io.netty.handler.codec.socks.SocksRequest;
 public final class SocksServerHandler extends SimpleChannelInboundHandler<SocksRequest> {
 	
 	private final URI bridgeServiceUri;
+	
+	private final String userName;
+	private final String passcode;
 
 	
-	public SocksServerHandler(URI bridgeServiceUri){
+	public SocksServerHandler(URI bridgeServiceUri,String userName,String passcode){
 		this.bridgeServiceUri = bridgeServiceUri;
+		this.userName = userName;
+		this.passcode = passcode;
 	}
 
     @Override
@@ -58,7 +63,7 @@ public final class SocksServerHandler extends SimpleChannelInboundHandler<SocksR
             case CMD:
                 SocksCmdRequest req = (SocksCmdRequest) socksRequest;
                 if (req.cmdType() == SocksCmdType.CONNECT) {
-                    ctx.pipeline().addLast(new SocksServerConnectHandler(bridgeServiceUri));
+                    ctx.pipeline().addLast(new SocksServerConnectHandler(bridgeServiceUri,userName,passcode));
                     ctx.pipeline().remove(this);
                     ctx.fireChannelRead(socksRequest);
                 } else {

@@ -28,8 +28,8 @@ public final class SocksServerInitializer extends ChannelInitializer<SocketChann
     private final SocksMessageEncoder socksMessageEncoder = new SocksMessageEncoder();
     private SocksServerHandler socksServerHandler;
     
-    public SocksServerInitializer(URI bridgeServiceUri){
-    	socksServerHandler = new SocksServerHandler(bridgeServiceUri);
+    public SocksServerInitializer(URI bridgeServiceUri,String userName,String passcode){
+    	socksServerHandler = new SocksServerHandler(bridgeServiceUri,userName,passcode);
     }
 
     @Override

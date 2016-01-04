@@ -37,6 +37,9 @@
 
 package org.wyb.sows.client;
 
+import org.wyb.sows.websocket.SowsConnectCmd;
+import org.wyb.sows.websocket.SowsStatusType;
+
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
@@ -70,12 +73,17 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
     
     private boolean remoteConnect = false;
     
-    public WebSocketClientHandler(WebSocketClientHandshaker handshaker,Promise<Channel> promise,String targetHost,int targetPort,Channel relayChannel) {
+    private String userName;
+    private String passcode;
+    
+    public WebSocketClientHandler(WebSocketClientHandshaker handshaker,Promise<Channel> promise,String targetHost,int targetPort,Channel relayChannel,String userName,String passcode) {
         this.handshaker = handshaker;
         this.promise = promise;
         this.targetHost = targetHost;
         this.targetPort = targetPort;
         this.relayChannel = relayChannel;
+        this.userName = userName;
+        this.passcode = passcode;
     }
     
 
@@ -92,9 +100,13 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
 			public void operationComplete(Future<Void> future) throws Exception {
 				// send out target host and port to remote service.
 				if(future.isSuccess()){
-					String req = targetHost+":"+targetPort;
-					System.out.println("Send remote connection request:"+req);
-					WebSocketFrame frame = new TextWebSocketFrame(req);
+					SowsConnectCmd cmd = new SowsConnectCmd();
+					cmd.setHost(targetHost);
+					cmd.setPort(targetPort);
+					cmd.setUserName(userName);
+					cmd.setPasscode(passcode);
+					System.out.println("Send remote connection request:"+cmd);
+					WebSocketFrame frame = new TextWebSocketFrame(cmd.encode());
 					ctx.writeAndFlush(frame);
 				}else{
 					System.err.println("Handshake failed!");
@@ -153,10 +165,10 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
         }
         else if (frame instanceof TextWebSocketFrame) {
             TextWebSocketFrame textFrame = (TextWebSocketFrame) frame;
-            //System.out.println("WebSocket Client received message: " + textFrame.text());
             if(!remoteConnect){
             	String remoteConnectionStatus = textFrame.text();
-            	if("success".equalsIgnoreCase(remoteConnectionStatus)){
+            	
+            	if(SowsStatusType.SUCCESS == SowsStatusType.valueOf(remoteConnectionStatus)){
             		System.out.println("Remote connection is established. targetHost="+targetHost+";targetPort="+targetPort);
                 	remoteConnect = true;
                 	promise.setSuccess(ctx.channel());

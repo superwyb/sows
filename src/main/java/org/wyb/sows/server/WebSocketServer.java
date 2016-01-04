@@ -15,6 +15,10 @@
  */
 package org.wyb.sows.server;
 
+import org.apache.log4j.PropertyConfigurator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
@@ -48,12 +52,12 @@ import io.netty.handler.ssl.util.SelfSignedCertificate;
  */
 public final class WebSocketServer {
 
+	final static Logger logger = LoggerFactory.getLogger(WebSocketServer.class);
     static final boolean SSL = System.getProperty("ssl") != null;
     static int PORT = Integer.parseInt(System.getProperty("port", SSL? "8443" : "8080"));
 
     public static void main(String[] args) throws Exception {
-    	
-    	PORT = Integer.parseInt(args[0]);
+    	PropertyConfigurator.configure( "./config/serverlog.config" );
         // Configure SSL.
         final SslContext sslCtx;
         if (SSL) {
@@ -75,14 +79,13 @@ public final class WebSocketServer {
              .childHandler(new WebSocketServerInitializer(sslCtx));
 
             Channel ch = b.bind(PORT).sync().channel();
-
-            System.out.println("Open your web browser and navigate to " +
-                    (SSL? "https" : "http") + "://127.0.0.1:" + PORT + '/');
-
+            logger.info("WebSocketServer is started.");
             ch.closeFuture().sync();
+            logger.info("WebSocketServer is closed.");
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
+            logger.info("EventLoopGroups are shutdown.");
         }
     }
 }

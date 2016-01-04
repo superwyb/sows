@@ -76,7 +76,6 @@ public class WebSocketRelayHandler extends ChannelInboundHandlerAdapter {
 	@Override
 	public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
     	if (relayChannel.isActive()) {
-    		//System.out.println("Binary send client");
     		WebSocketFrame frame = new BinaryWebSocketFrame(((ByteBuf) msg));
     		relayChannel.writeAndFlush(frame);
         }else{

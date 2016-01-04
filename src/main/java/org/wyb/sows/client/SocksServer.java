@@ -15,7 +15,12 @@
  */
 package org.wyb.sows.client;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.net.URI;
+import java.util.Properties;
+
+import org.apache.log4j.PropertyConfigurator;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.EventLoopGroup;
@@ -26,11 +31,21 @@ import io.netty.handler.logging.LoggingHandler;
 
 public final class SocksServer {
 
-    static int PORT = Integer.parseInt(System.getProperty("port", "1081"));
-
+    final static int PORT = Integer.parseInt(System.getProperty("port", "1080"));
+    final static String URI = System.getProperty("uri", "ws://127.0.0.1:8080/websocket");
     public static void main(String[] args) throws Exception {
-    	PORT = Integer.parseInt(args[0]);
-    	String uri = args[1];
+    	File configFile = new File("./config/sows.config");
+    	if(!configFile.exists()){
+    		System.err.println("Cannot file config file: sows.config");
+    		System.exit(-1);
+    	}
+    	PropertyConfigurator.configure( "./config/serverlog.config" );
+    	Properties props = new Properties();
+    	props.load(new FileInputStream(configFile));
+    	String uri = props.getProperty("sows.uri");
+    	int port = Integer.parseInt(props.getProperty("socks.port"));
+    	String userName = props.getProperty("sows.user");
+    	String passcode = props.getProperty("sows.pass");
     	URI bridgeServiceUri = new URI(uri);
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
@@ -39,8 +54,8 @@ public final class SocksServer {
             b.group(bossGroup, workerGroup)
              .channel(NioServerSocketChannel.class)
              .handler(new LoggingHandler(LogLevel.INFO))
-             .childHandler(new SocksServerInitializer(bridgeServiceUri));
-            b.bind(PORT).sync().channel().closeFuture().sync();
+             .childHandler(new SocksServerInitializer(bridgeServiceUri,userName,passcode));
+            b.bind(port).sync().channel().closeFuture().sync();
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
