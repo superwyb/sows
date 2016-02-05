@@ -174,6 +174,7 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> 
 				String host = cmd.getHost();
 				int port = cmd.getPort();
 				final Channel inboundChannel = ctx.channel();
+				/*
 				LoginContext loginCtx = null;
 		        try {
 		        	loginCtx = new LoginContext("SimpleLogin", new PassiveCallbackHandler(cmd.getUserName(),cmd.getPasscode()));
@@ -183,6 +184,7 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> 
 					WebSocketFrame frame1 = new TextWebSocketFrame(SowsStatusType.FAILED.stringValue());
 					inboundChannel.writeAndFlush(frame1).addListener(ChannelFutureListener.CLOSE);
 		        }
+		        */
 				// Start the connection attempt.
 				Bootstrap b = new Bootstrap();
 				b.group(inboundChannel.eventLoop()).channel(ctx.channel().getClass())
