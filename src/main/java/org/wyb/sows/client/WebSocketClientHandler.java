@@ -149,18 +149,17 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
                             ", content=" + response.content().toString(CharsetUtil.UTF_8) + ')');
         }
         
-        
-
         WebSocketFrame frame = (WebSocketFrame) msg;
         
         if(frame instanceof BinaryWebSocketFrame){
         	//System.out.println("Binary got clinet");
         	BinaryWebSocketFrame binFrame = (BinaryWebSocketFrame) frame;
         	if (relayChannel.isActive()) {
-                relayChannel.writeAndFlush(binFrame.content().retain());
-               // if(binFrame.isFinalFragment()){
-               // 	relayChannel.flush();
-               // }
+        		if(binFrame.isFinalFragment()){
+        			relayChannel.writeAndFlush(binFrame.content().retain());
+        		}else{
+        			relayChannel.write(binFrame.content().retain());
+        		}
             }
         }
         else if (frame instanceof TextWebSocketFrame) {
