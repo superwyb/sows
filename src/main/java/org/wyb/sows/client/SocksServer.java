@@ -26,39 +26,41 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
 
 public final class SocksServer {
 
-    final static int PORT = Integer.parseInt(System.getProperty("port", "1080"));
-    final static String URI = System.getProperty("uri", "ws://127.0.0.1:8080/websocket");
-    public static void main(String[] args) throws Exception {
-    	File configFile = new File("./config/sows.config");
-    	if(!configFile.exists()){
-    		System.err.println("Cannot file config file: sows.config");
-    		System.exit(-1);
-    	}
-    	PropertyConfigurator.configure( "./config/serverlog.config" );
-    	Properties props = new Properties();
-    	props.load(new FileInputStream(configFile));
-    	String uri = props.getProperty("sows.uri");
-    	int port = Integer.parseInt(props.getProperty("socks.port"));
-    	String userName = props.getProperty("sows.user");
-    	String passcode = props.getProperty("sows.pass");
-    	URI bridgeServiceUri = new URI(uri);
-        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
-        try {
-            ServerBootstrap b = new ServerBootstrap();
-            b.group(bossGroup, workerGroup)
-             .channel(NioServerSocketChannel.class)
-             .handler(new LoggingHandler(LogLevel.INFO))
-             .childHandler(new SocksServerInitializer(bridgeServiceUri,userName,passcode));
-            b.bind(port).sync().channel().closeFuture().sync();
-        } finally {
-            bossGroup.shutdownGracefully();
-            workerGroup.shutdownGracefully();
-        }
-    }
+	final static int PORT = Integer.parseInt(System.getProperty("port", "1080"));
+	final static String URI = System.getProperty("uri", "ws://127.0.0.1:8080/websocket");
+	public static boolean isDebug = false;
+
+	public static void main(String[] args) throws Exception {
+		File configFile = new File("./config/sows.config");
+		if (!configFile.exists()) {
+			System.err.println("Cannot find config file: ./config/sows.config");
+			System.exit(-1);
+		}
+		PropertyConfigurator.configure( "./config/serverlog.config" );
+		Properties props = new Properties();
+		props.load(new FileInputStream(configFile));
+		String uri = props.getProperty("sows.uri");
+		int port = Integer.parseInt(props.getProperty("socks.port"));
+		String userName = props.getProperty("sows.user");
+		String passcode = props.getProperty("sows.pass");
+		isDebug = Boolean.parseBoolean(props.getProperty("debug", "false"));
+		URI bridgeServiceUri = new URI(uri);
+		EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+		EventLoopGroup workerGroup = new NioEventLoopGroup();
+		try {
+			ServerBootstrap b = new ServerBootstrap();
+			b.group(bossGroup, workerGroup).channel(NioServerSocketChannel.class)
+					// .handler(new LoggingHandler(LogLevel.INFO))
+					.childHandler(new SocksServerInitializer(bridgeServiceUri, userName, passcode));
+			System.out.printf("Socks server is listening on port %d. Remote URI is %s \r\n", port, uri);
+			b.bind(port).sync().channel().closeFuture().sync();
+			
+		} finally {
+			bossGroup.shutdownGracefully();
+			workerGroup.shutdownGracefully();
+		}
+	}
 }

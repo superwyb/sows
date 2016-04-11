@@ -66,7 +66,9 @@ public class WebSocketRelayHandler extends ChannelInboundHandlerAdapter {
 
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-		System.out.println("websocket client relay inactive");
+		if(SocksServer.isDebug){
+			System.out.println("Websocket client relay inactive");
+		}
         if (relayChannel.isActive()) {
             //SocksServerUtils.closeOnFlush(relayChannel);
         }

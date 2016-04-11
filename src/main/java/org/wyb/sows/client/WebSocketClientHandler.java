@@ -105,11 +105,12 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
 					cmd.setPort(targetPort);
 					cmd.setUserName(userName);
 					cmd.setPasscode(passcode);
-					System.out.println("Send remote connection request:"+cmd);
+					if(SocksServer.isDebug){
+						System.out.printf("Send remote connection request: %s \r\n",cmd);
+					}
 					WebSocketFrame frame = new TextWebSocketFrame(cmd.encode());
 					ctx.writeAndFlush(frame);
 				}else{
-					System.err.println("Handshake failed!");
 					promise.setFailure(new Exception("Bridge service handshake failed!"));
 				}
 			}
@@ -137,8 +138,10 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
         Channel ch = ctx.channel();
         if (!handshaker.isHandshakeComplete()) {
             handshaker.finishHandshake(ch, (FullHttpResponse) msg);
-            System.out.println("WebSocket Client connected!");
             handshakeFuture.setSuccess();
+            if(SocksServer.isDebug){
+            	System.out.println("Websocket hand shake success.");
+            }
             return;
         }
 
@@ -152,7 +155,6 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
         WebSocketFrame frame = (WebSocketFrame) msg;
         
         if(frame instanceof BinaryWebSocketFrame){
-        	//System.out.println("Binary got clinet");
         	BinaryWebSocketFrame binFrame = (BinaryWebSocketFrame) frame;
         	if (relayChannel.isActive()) {
         		if(binFrame.isFinalFragment()){
@@ -180,7 +182,9 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
         } else if (frame instanceof PongWebSocketFrame) {
             System.out.println("WebSocket Client received pong");
         } else if (frame instanceof CloseWebSocketFrame) {
-            System.out.println("WebSocket Client received closing");
+        	if(SocksServer.isDebug){
+        		System.out.println("WebSocket Client received closing");
+        	}
             ch.close();
         }
     }

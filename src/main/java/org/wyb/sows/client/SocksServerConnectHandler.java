@@ -66,7 +66,9 @@ public final class SocksServerConnectHandler extends SimpleChannelInboundHandler
             public void operationComplete(final Future<Channel> future) throws Exception {
                 final Channel outboundChannel = future.getNow();
                 if (future.isSuccess()) {
-                	System.out.println("Bridge is established. Inform proxy client.");
+                	if(SocksServer.isDebug){
+                		System.out.println("Bridge is established. Inform proxy client.");
+                	}
                 	SocksCmdResponse resp = new SocksCmdResponse(SocksCmdStatus.SUCCESS, request.addressType());
                 	resp.setProtocolVersion(request.protocolVersion());
                     ctx.channel().writeAndFlush(resp)
@@ -105,16 +107,20 @@ public final class SocksServerConnectHandler extends SimpleChannelInboundHandler
                          handler);
              }
          });
-        System.out.println("Connect to bridge service.");
+        if(SocksServer.isDebug){
+        	System.out.println("Try to connect to bridge service.");
+        }
         b.connect(bridgeServiceUri.getHost(), bridgeServiceUri.getPort()).addListener(new ChannelFutureListener() {
             @Override
             public void operationComplete(ChannelFuture future) throws Exception {
                 if (future.isSuccess()) {
                     // Connection established use handler provided results
-                	System.out.println("Bridge service connection is established. host="+bridgeServiceUri.getHost()+"port="+bridgeServiceUri.getPort());
+                	if(SocksServer.isDebug){
+                		System.out.printf("Brige service connection is established. host=%s,port=%d \r\n", bridgeServiceUri.getHost(), bridgeServiceUri.getPort());
+                	}
                 } else {
                     // Close the connection if the connection attempt has failed.
-                	System.err.println("Not able to connect bridge service! host="+bridgeServiceUri.getHost()+"port="+bridgeServiceUri.getPort());
+                	System.err.printf("Not able to connect bridge service! host=%s,port=%d \r\n", bridgeServiceUri.getHost(), bridgeServiceUri.getPort());
                     ctx.channel().writeAndFlush(
                             new SocksCmdResponse(SocksCmdStatus.FAILURE, request.addressType()));
                     SocksServerUtils.closeOnFlush(ctx.channel());
