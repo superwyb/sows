@@ -170,11 +170,13 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
             	String remoteConnectionStatus = textFrame.text();
             	
             	if(SowsStatusType.SUCCESS == SowsStatusType.valueOf(remoteConnectionStatus)){
-            		System.out.println("Remote connection is established. targetHost="+targetHost+";targetPort="+targetPort);
+            		System.out.printf("Remote connection is established. %s:%d\r\n",targetHost,targetPort);
                 	remoteConnect = true;
                 	promise.setSuccess(ctx.channel());
             	}else{
-            		throw new Exception("Remote connection error! Msg:"+remoteConnectionStatus);
+            		//throw new Exception("Remote connection error! Msg:"+remoteConnectionStatus);
+            		System.err.printf("Remote connection failed. %s:%d\r\n",targetHost,targetPort);
+            		ch.close();
             	}
             }else{
             	System.err.println("Unknow text command.");
