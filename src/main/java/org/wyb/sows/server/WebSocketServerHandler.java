@@ -22,6 +22,7 @@ import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
 import static io.netty.handler.codec.http.HttpResponseStatus.FORBIDDEN;
 import static io.netty.handler.codec.http.HttpResponseStatus.NOT_FOUND;
 import static io.netty.handler.codec.http.HttpResponseStatus.OK;
+import static io.netty.handler.codec.http.HttpResponseStatus.UNAUTHORIZED;
 import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 import java.io.UnsupportedEncodingException;
@@ -32,6 +33,7 @@ import javax.security.auth.login.LoginException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wyb.sows.server.security.PassiveCallbackHandler;
+import org.wyb.sows.websocket.SowsAuthHelper;
 import org.wyb.sows.websocket.SowsConnectCmd;
 import org.wyb.sows.websocket.SowsStatusType;
 
@@ -62,7 +64,7 @@ import io.netty.util.CharsetUtil;
  * Handles handshakes and messages
  */
 public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> {
-	
+
 	final Logger logger = LoggerFactory.getLogger(WebSocketServerHandler.class);
 
 	private static final String WEBSOCKET_PATH = "/websocket";
@@ -117,6 +119,17 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> 
 			return;
 		}
 
+		// check auth header
+		if (req.headers().contains(SowsAuthHelper.HEADER_SOWS_USER)
+				&& req.headers().contains(SowsAuthHelper.HEADER_SOWS_TOKEN)
+				&& req.headers().contains(SowsAuthHelper.HEADER_SOWS_SEED)) {
+			//TODO auth
+
+		} else {
+			FullHttpResponse res = new DefaultFullHttpResponse(HTTP_1_1, UNAUTHORIZED);
+			sendHttpResponse(ctx, req, res);
+			return;
+		}
 		// Handshake
 		WebSocketServerHandshakerFactory wsFactory = new WebSocketServerHandshakerFactory(getWebSocketLocation(req),
 				null, true);
@@ -143,25 +156,25 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> 
 			throw new UnsupportedOperationException(
 					String.format("%s frame types not supported", frame.getClass().getName()));
 		}
-		if(frame instanceof BinaryWebSocketFrame){
-			if(remoteConnect){
-			BinaryWebSocketFrame binFrame = (BinaryWebSocketFrame) frame;
-			if (outboundChannel.isActive()) {
-				outboundChannel.writeAndFlush(binFrame.content().retain()).addListener(new ChannelFutureListener() {
-					@Override
-					public void operationComplete(ChannelFuture future) {
-						if (future.isSuccess()) {
-							ctx.channel().read();
-						} else {
-							future.channel().close();
+		if (frame instanceof BinaryWebSocketFrame) {
+			if (remoteConnect) {
+				BinaryWebSocketFrame binFrame = (BinaryWebSocketFrame) frame;
+				if (outboundChannel.isActive()) {
+					outboundChannel.writeAndFlush(binFrame.content().retain()).addListener(new ChannelFutureListener() {
+						@Override
+						public void operationComplete(ChannelFuture future) {
+							if (future.isSuccess()) {
+								ctx.channel().read();
+							} else {
+								future.channel().close();
+							}
 						}
-					}
-				});
-			}
-			}else{
+					});
+				}
+			} else {
 				ctx.close();
 			}
-		}else if(frame instanceof TextWebSocketFrame){
+		} else if (frame instanceof TextWebSocketFrame) {
 			String request = ((TextWebSocketFrame) frame).text();
 			if (!remoteConnect) {
 				SowsConnectCmd cmd = new SowsConnectCmd();
@@ -175,33 +188,34 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> 
 				int port = cmd.getPort();
 				final Channel inboundChannel = ctx.channel();
 				/*
-				LoginContext loginCtx = null;
-		        try {
-		        	loginCtx = new LoginContext("SimpleLogin", new PassiveCallbackHandler(cmd.getUserName(),cmd.getPasscode()));
-		        	loginCtx.login();
-		        } catch (LoginException e) {
-		        	logger.warn("Login failed. User="+cmd.getUserName());
-					WebSocketFrame frame1 = new TextWebSocketFrame(SowsStatusType.FAILED.stringValue());
-					inboundChannel.writeAndFlush(frame1).addListener(ChannelFutureListener.CLOSE);
-		        }
-		        */
+				 * LoginContext loginCtx = null; try { loginCtx = new
+				 * LoginContext("SimpleLogin", new
+				 * PassiveCallbackHandler(cmd.getUserName(),cmd.getPasscode()));
+				 * loginCtx.login(); } catch (LoginException e) { logger.warn(
+				 * "Login failed. User="+cmd.getUserName()); WebSocketFrame
+				 * frame1 = new
+				 * TextWebSocketFrame(SowsStatusType.FAILED.stringValue());
+				 * inboundChannel.writeAndFlush(frame1).addListener(
+				 * ChannelFutureListener.CLOSE); }
+				 */
 				// Start the connection attempt.
 				Bootstrap b = new Bootstrap();
 				b.group(inboundChannel.eventLoop()).channel(ctx.channel().getClass())
-						.handler(new HexDumpProxyInitializer(inboundChannel,handshaker)).option(ChannelOption.AUTO_READ, false);
+						.handler(new HexDumpProxyInitializer(inboundChannel, handshaker))
+						.option(ChannelOption.AUTO_READ, false);
 				ChannelFuture f = b.connect(host, port);
 				outboundChannel = f.channel();
 				f.addListener(new ChannelFutureListener() {
 					@Override
 					public void operationComplete(ChannelFuture future) {
 						if (future.isSuccess()) {
-							logger.info("Target connection is established. Target="+host+":"+port);
+							logger.info("Target connection is established. Target=" + host + ":" + port);
 							WebSocketFrame frame = new TextWebSocketFrame(SowsStatusType.SUCCESS.stringValue());
 							inboundChannel.writeAndFlush(frame);
 							// connection complete start to read first data
 							inboundChannel.read();
 						} else {
-							logger.warn("Not able to connect target. Target="+host+":"+port);
+							logger.warn("Not able to connect target. Target=" + host + ":" + port);
 							WebSocketFrame frame = new TextWebSocketFrame(SowsStatusType.FAILED.stringValue());
 							inboundChannel.writeAndFlush(frame).addListener(ChannelFutureListener.CLOSE);
 						}
@@ -209,13 +223,10 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> 
 				});
 				remoteConnect = true;
 			} else {
-				logger.warn("Unknown SowsCmd! "+ request);
+				logger.warn("Unknown SowsCmd! " + request);
 				ctx.close();
 			}
 		}
-		
-
-		
 
 	}
 
@@ -252,7 +263,7 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> 
 
 	@Override
 	public void channelInactive(ChannelHandlerContext ctx) {
-		if(logger.isDebugEnabled()){
+		if (logger.isDebugEnabled()) {
 			logger.debug("Websocket inbound inactive.");
 		}
 		if (outboundChannel != null) {

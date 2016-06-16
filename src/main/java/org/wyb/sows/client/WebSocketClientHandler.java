@@ -73,17 +73,13 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
     
     private boolean remoteConnect = false;
     
-    private String userName;
-    private String passcode;
     
-    public WebSocketClientHandler(WebSocketClientHandshaker handshaker,Promise<Channel> promise,String targetHost,int targetPort,Channel relayChannel,String userName,String passcode) {
+    public WebSocketClientHandler(WebSocketClientHandshaker handshaker,Promise<Channel> promise,String targetHost,int targetPort,Channel relayChannel) {
         this.handshaker = handshaker;
         this.promise = promise;
         this.targetHost = targetHost;
         this.targetPort = targetPort;
         this.relayChannel = relayChannel;
-        this.userName = userName;
-        this.passcode = passcode;
     }
     
 
@@ -103,8 +99,6 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
 					SowsConnectCmd cmd = new SowsConnectCmd();
 					cmd.setHost(targetHost);
 					cmd.setPort(targetPort);
-					cmd.setUserName(userName);
-					cmd.setPasscode(passcode);
 					if(SocksServer.isDebug){
 						System.out.printf("Send remote connection request: %s \r\n",cmd);
 					}
