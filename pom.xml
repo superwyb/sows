@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.wyb.sows</groupId>
 	<artifactId>SocksOverWebSocket</artifactId>
-	<version>0.0.1</version>
+	<version>0.1.0</version>
 
 	<properties>
 		<netty.version>4.0.33.Final</netty.version>

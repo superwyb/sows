@@ -21,11 +21,13 @@ import java.net.URI;
 import java.util.Properties;
 
 import org.apache.log4j.PropertyConfigurator;
+import org.wyb.sows.websocket.SowsAuthHelper;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.util.CharsetUtil;
 
 public final class SocksServer {
 
@@ -45,7 +47,9 @@ public final class SocksServer {
 		String uri = props.getProperty("sows.uri");
 		int port = Integer.parseInt(props.getProperty("socks.port"));
 		String userName = props.getProperty("sows.user");
-		String passcode = props.getProperty("sows.pass");
+		String password = props.getProperty("sows.pass");
+		byte[] sha1 = SowsAuthHelper.sha1((password).getBytes(CharsetUtil.US_ASCII));
+		String passcode = SowsAuthHelper.base64(sha1);
 		isDebug = Boolean.parseBoolean(props.getProperty("debug", "false"));
 		URI bridgeServiceUri = new URI(uri);
 		EventLoopGroup bossGroup = new NioEventLoopGroup(1);

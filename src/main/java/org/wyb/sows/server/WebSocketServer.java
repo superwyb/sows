@@ -18,6 +18,7 @@ package org.wyb.sows.server;
 import org.apache.log4j.PropertyConfigurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.wyb.sows.server.security.SimpleAuthHandler;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
@@ -76,7 +77,7 @@ public final class WebSocketServer {
              .handler(new LoggingHandler(LogLevel.INFO))
              .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10000)
              .option(ChannelOption.SO_KEEPALIVE, true)
-             .childHandler(new WebSocketServerInitializer(sslCtx));
+             .childHandler(new WebSocketServerInitializer(sslCtx,new SimpleAuthHandler()));
 
             Channel ch = b.bind(PORT).sync().channel();
             logger.info("WebSocketServer is started.");

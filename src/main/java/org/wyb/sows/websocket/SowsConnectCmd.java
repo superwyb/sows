@@ -40,20 +40,14 @@ public class SowsConnectCmd extends SowsCmd{
 		sb.append(":");
 		sb.append(port);
 		sb.append(";");
-		sb.append(userName);
-		sb.append("@");
-		sb.append(passcode);
 		return sb.toString();
 	}
 	@Override
 	public void decode(String msg)  throws UnsupportedEncodingException{
 		String[] params = msg.split("\\;");
 		String[] targetParams = params[0].split("\\:");
-		String[] loginParams = params[1].split("\\@");
 		this.host = targetParams[0];
 		this.port = Integer.parseInt(targetParams[1]);
-		this.userName = loginParams[0];
-		this.passcode = loginParams[1];
 		
 	}
 	@Override
