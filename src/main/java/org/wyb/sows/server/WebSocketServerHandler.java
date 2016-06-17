@@ -27,13 +27,9 @@ import static io.netty.handler.codec.http.HttpVersion.HTTP_1_1;
 
 import java.io.UnsupportedEncodingException;
 
-import javax.security.auth.login.LoginContext;
-import javax.security.auth.login.LoginException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.wyb.sows.server.security.AuthHandler;
-import org.wyb.sows.server.security.PassiveCallbackHandler;
 import org.wyb.sows.websocket.SowsAuthHelper;
 import org.wyb.sows.websocket.SowsConnectCmd;
 import org.wyb.sows.websocket.SowsStatusType;
