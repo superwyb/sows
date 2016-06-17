@@ -32,6 +32,7 @@ import javax.security.auth.login.LoginException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.wyb.sows.server.security.AuthHandler;
 import org.wyb.sows.server.security.PassiveCallbackHandler;
 import org.wyb.sows.websocket.SowsAuthHelper;
 import org.wyb.sows.websocket.SowsConnectCmd;
@@ -74,6 +75,12 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> 
 	private volatile Channel outboundChannel;
 
 	private boolean remoteConnect = false;
+
+	private final AuthHandler authHandler;
+
+	public WebSocketServerHandler(AuthHandler authHandler) {
+		this.authHandler = authHandler;
+	}
 
 	@Override
 	public void channelRead0(ChannelHandlerContext ctx, Object msg) {
@@ -123,7 +130,14 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> 
 		if (req.headers().contains(SowsAuthHelper.HEADER_SOWS_USER)
 				&& req.headers().contains(SowsAuthHelper.HEADER_SOWS_TOKEN)
 				&& req.headers().contains(SowsAuthHelper.HEADER_SOWS_SEED)) {
-			//TODO auth
+			String user = req.headers().get(SowsAuthHelper.HEADER_SOWS_USER);
+			String token = req.headers().get(SowsAuthHelper.HEADER_SOWS_TOKEN);
+			String seed = req.headers().get(SowsAuthHelper.HEADER_SOWS_SEED);
+			if (authHandler.login(user, token, seed) != AuthHandler.OK) {
+				FullHttpResponse res = new DefaultFullHttpResponse(HTTP_1_1, UNAUTHORIZED);
+				sendHttpResponse(ctx, req, res);
+				return;
+			}
 
 		} else {
 			FullHttpResponse res = new DefaultFullHttpResponse(HTTP_1_1, UNAUTHORIZED);
@@ -187,17 +201,13 @@ public class WebSocketServerHandler extends SimpleChannelInboundHandler<Object> 
 				String host = cmd.getHost();
 				int port = cmd.getPort();
 				final Channel inboundChannel = ctx.channel();
-				/*
-				 * LoginContext loginCtx = null; try { loginCtx = new
-				 * LoginContext("SimpleLogin", new
-				 * PassiveCallbackHandler(cmd.getUserName(),cmd.getPasscode()));
-				 * loginCtx.login(); } catch (LoginException e) { logger.warn(
-				 * "Login failed. User="+cmd.getUserName()); WebSocketFrame
-				 * frame1 = new
-				 * TextWebSocketFrame(SowsStatusType.FAILED.stringValue());
-				 * inboundChannel.writeAndFlush(frame1).addListener(
-				 * ChannelFutureListener.CLOSE); }
-				 */
+				// invalid host
+				if(host.equals("localhost")||host.equals("127.0.0.1")){
+					logger.warn("Invalid host. Target=" + host + ":" + port);
+					WebSocketFrame frame2 = new TextWebSocketFrame(SowsStatusType.FAILED.stringValue());
+					inboundChannel.writeAndFlush(frame2).addListener(ChannelFutureListener.CLOSE);
+				}
+				
 				// Start the connection attempt.
 				Bootstrap b = new Bootstrap();
 				b.group(inboundChannel.eventLoop()).channel(ctx.channel().getClass())

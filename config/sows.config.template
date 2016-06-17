@@ -1,0 +1,5 @@
+sows.uri=ws://<wsserver>:8080/websocket
+sows.user=user
+sows.pass=password
+socks.port=8080
+debug=false

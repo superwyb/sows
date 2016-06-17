@@ -62,6 +62,12 @@ public final class SocksServerConnectHandler extends SimpleChannelInboundHandler
 
 	@Override
 	public void channelRead0(final ChannelHandlerContext ctx, final SocksCmdRequest request) throws Exception {
+		if(request.host().equals("127.0.0.1")||request.host().equals("localhost")){
+			System.err.println("Not able to establish bridge. Inform proxy client.");
+			ctx.channel().writeAndFlush(new SocksCmdResponse(SocksCmdStatus.FAILURE, request.addressType()));
+			SocksServerUtils.closeOnFlush(ctx.channel());
+		}
+		
 		Promise<Channel> promise = ctx.executor().newPromise();
 		promise.addListener(new GenericFutureListener<Future<Channel>>() {
 			@Override
@@ -90,7 +96,8 @@ public final class SocksServerConnectHandler extends SimpleChannelInboundHandler
 			}
 		});
 		final Channel inboundChannel = ctx.channel();
-
+		
+		// Add authentication headers
 		HttpHeaders authHeader = new DefaultHttpHeaders();
 		authHeader.add(SowsAuthHelper.HEADER_SOWS_USER, this.userName);
 		byte[] nonce = SowsAuthHelper.randomBytes(16);
@@ -99,6 +106,8 @@ public final class SocksServerConnectHandler extends SimpleChannelInboundHandler
 		byte[] sha1 = SowsAuthHelper.sha1((this.passcode + seed).getBytes(CharsetUtil.US_ASCII));
 		String token = SowsAuthHelper.base64(sha1);
 		authHeader.add(SowsAuthHelper.HEADER_SOWS_TOKEN, token);
+		
+		// initiating websocket client handler
 		final WebSocketClientHandler handler = new WebSocketClientHandler(
 				WebSocketClientHandshakerFactory.newHandshaker(bridgeServiceUri, WebSocketVersion.V13, null, false,
 						authHeader),
